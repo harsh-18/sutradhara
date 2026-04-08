@@ -1,0 +1,180 @@
+sources:
+  productivity-bq-source:
+    kind: bigquery
+    project: gen-lang-client-0268313809
+
+tools:
+  # ── Task Tools ──────────────────────────────────────────────
+  get_pending_tasks:
+    kind: bigquery-sql
+    source: productivity-bq-source
+    description: |
+      Use this tool to retrieve all pending tasks for a user.
+      Returns task_id, title, priority, and due_date.
+    parameters:
+      - name: user_id
+        type: string
+        description: The unique user ID
+    statement: |
+      SELECT task_id, title, description, priority, due_date, status
+      FROM `gen-lang-client-0268313809.productivity_assistant.tasks`
+      WHERE user_id = @user_id
+        AND status = 'pending'
+      ORDER BY due_date ASC
+
+  create_task:
+    kind: bigquery-sql
+    source: productivity-bq-source
+    description: |
+      Use this tool to create a new task for a user in BigQuery.
+    parameters:
+      - name: user_id
+        type: string
+        description: User ID
+      - name: title
+        type: string
+        description: Task title
+      - name: description
+        type: string
+        description: Task description
+      - name: priority
+        type: string
+        description: "Priority level: low, medium, or high"
+      - name: due_date
+        type: string
+        description: "Due date in YYYY-MM-DD format"
+    statement: |
+      INSERT INTO `gen-lang-client-0268313809.productivity_assistant.tasks`
+      VALUES (
+        GENERATE_UUID(), @user_id, @title, @description,
+        'pending', @priority, CAST(@due_date AS DATE), CURRENT_TIMESTAMP()
+      )
+
+  complete_task:
+    kind: bigquery-sql
+    source: productivity-bq-source
+    description: |
+      Use this tool to mark a task as completed.
+    parameters:
+      - name: task_id
+        type: string
+        description: The task ID to mark complete
+    statement: |
+      UPDATE `gen-lang-client-0268313809.productivity_assistant.tasks`
+      SET status = 'completed'
+      WHERE task_id = @task_id
+
+  # ── Schedule Tools ──────────────────────────────────────────
+  get_todays_schedule:
+    kind: bigquery-sql
+    source: productivity-bq-source
+    description: |
+      Use this tool to get all scheduled events for a user for today or upcoming dates.
+    parameters:
+      - name: user_id
+        type: string
+        description: User ID
+    statement: |
+      SELECT event_id, event_title, start_time, end_time, location, notes
+      FROM `gen-lang-client-0268313809.productivity_assistant.schedules`
+      WHERE user_id = @user_id
+        AND DATE(start_time) >= CURRENT_DATE()
+      ORDER BY start_time ASC
+      LIMIT 10
+
+  create_schedule_event:
+    kind: bigquery-sql
+    source: productivity-bq-source
+    description: |
+      Use this tool to create a new scheduled event for a user.
+    parameters:
+      - name: user_id
+        type: string
+        description: User ID
+      - name: event_title
+        type: string
+        description: Title of the meeting or event
+      - name: start_time
+        type: string
+        description: "Start time in ISO 8601 format: YYYY-MM-DD HH:MM:SS"
+      - name: end_time
+        type: string
+        description: "End time in ISO 8601 format: YYYY-MM-DD HH:MM:SS"
+      - name: location
+        type: string
+        description: Meeting location or link
+    statement: |
+      INSERT INTO `gen-lang-client-0268313809.productivity_assistant.schedules`
+      VALUES (
+        GENERATE_UUID(), @user_id, @event_title,
+        CAST(@start_time AS TIMESTAMP), CAST(@end_time AS TIMESTAMP),
+        @location, '', CURRENT_TIMESTAMP()
+      )
+
+  # ── Notes Tools ─────────────────────────────────────────────
+  search_notes:
+    kind: bigquery-sql
+    source: productivity-bq-source
+    description: |
+      Use this tool to search through a user's notes by keyword or tag.
+    parameters:
+      - name: user_id
+        type: string
+        description: User ID
+      - name: keyword
+        type: string
+        description: Keyword to search for in note title, content, or tags
+    statement: |
+      SELECT note_id, title, content, tags, created_at
+      FROM `gen-lang-client-0268313809.productivity_assistant.notes`
+      WHERE user_id = @user_id
+        AND (LOWER(title) LIKE CONCAT('%', LOWER(@keyword), '%')
+          OR LOWER(content) LIKE CONCAT('%', LOWER(@keyword), '%')
+          OR LOWER(tags) LIKE CONCAT('%', LOWER(@keyword), '%'))
+      ORDER BY created_at DESC
+      LIMIT 5
+
+  create_note:
+    kind: bigquery-sql
+    source: productivity-bq-source
+    description: |
+      Use this tool to create a new note for a user.
+    parameters:
+      - name: user_id
+        type: string
+        description: User ID
+      - name: title
+        type: string
+        description: Note title
+      - name: content
+        type: string
+        description: Note content body
+      - name: tags
+        type: string
+        description: Comma-separated tags for the note
+    statement: |
+      INSERT INTO `gen-lang-client-0268313809.productivity_assistant.notes`
+      VALUES (
+        GENERATE_UUID(), @user_id, @title, @content,
+        @tags, CURRENT_TIMESTAMP()
+      )
+
+toolsets:
+  task_toolset:
+    - get_pending_tasks
+    - create_task
+    - complete_task
+  schedule_toolset:
+    - get_todays_schedule
+    - create_schedule_event
+  notes_toolset:
+    - search_notes
+    - create_note
+  all_tools:
+    - get_pending_tasks
+    - create_task
+    - complete_task
+    - get_todays_schedule
+    - create_schedule_event
+    - search_notes
+    - create_note
