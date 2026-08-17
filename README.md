@@ -25,4 +25,4 @@ https://productivity-assistant-785984389524.asia-south1.run.app
 >
 > For a proof-of-working recording, see this Loom video: https://www.loom.com/share/e45c505525304126a782ce730fa1380e
 
-We are working to restore deployment credentials and bring the live demo back online. If you'd like, I can help update the GCP credentials and redeploy the Cloud Run service.
+We are working to restore deployment credentials and bring the live demo back online.
